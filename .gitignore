@@ -1,0 +1,6 @@
+Debug/*
+.cproject
+.mxproject
+.project
+.settings/
+BQ25792 Debug.launch
