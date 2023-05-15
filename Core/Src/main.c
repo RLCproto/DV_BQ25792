@@ -23,6 +23,7 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "stdlib.h"
+#include "BQ25792.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -127,7 +128,7 @@ int main(void)
   /* USER CODE BEGIN 2 */
 
   HAL_UART_Transmit(&huart2, "\f", 1, 10);
-  len = sprintf(bufforTx,":)\r\nCompiled @ %s %s\r\n", __DATE__, __TIME__);
+  len = sprintf(bufforTx,"Compiled @ %s %s\r\n", __DATE__, __TIME__);
   HAL_UART_Transmit(&huart2, bufforTx, len, 10);
   /* USER CODE END 2 */
 
@@ -141,11 +142,9 @@ int main(void)
     MX_USB_HOST_Process();
 
     /* USER CODE BEGIN 3 */
-	HAL_I2C_Master_Transmit(&hi2c1, I2C_BQ25792_ADDRESS, pData, 1, 10);
-    if(HAL_I2C_Master_Receive(&hi2c1, I2C_BQ25792_ADDRESS, pData, 1, 10) == HAL_OK)
+    if(BQ25792_Read(BQ25792_VBAT_ADC, pData, 2) == HAL_OK)
     {
-        //len = sprintf(bufforTx,"%0.2x %0.2x %0.2x %0.2x %0.2x %0.2x %0.2x %0.2x %0.2x %0.2x %0.2x %0.2x %0.2x %0.2x %0.2x %0.2x\r\n", pData[0], pData[1], pData[2], pData[3], pData[4], pData[5], pData[6], pData[7], pData[8], pData[9], pData[10], pData[11], pData[12], pData[13], pData[14], pData[15]);
-        len = sprintf(bufforTx,"\r%0.2x", pData[0]);
+        len = sprintf(bufforTx,"\r%0.2x%0.2x", pData[0], pData[0]);
         HAL_UART_Transmit(&huart2, bufforTx, len, 10);
     }
     else
