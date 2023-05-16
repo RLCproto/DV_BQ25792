@@ -70,7 +70,19 @@
 #define BQ25792_DPDM_DRIVER				0x47 //1
 #define BQ25792_PART_INFO				0x48 //1
 
+#define BQ25792_ADC_CONTROL_EN			(1<<7)
+#define BQ25792_ADC_CONTROL_RATE_SINGLE		(1<<6)
+#define BQ25792_ADC_CONTROL_RATE_CONTINUOUS	(1<<6)
+#define BQ25792_ADC_CONTROL_SAMPLE_15B	(0<<4)
+#define BQ25792_ADC_CONTROL_SAMPLE_14B	(1<<4)
+#define BQ25792_ADC_CONTROL_SAMPLE_13B	(2<<4)
+#define BQ25792_ADC_CONTROL_SAMPLE_12B	(3<<4)
+#define BQ25792_ADC_CONTROL_AVG			(1<<3)
+#define BQ25792_ADC_CONTROL_AVG_INIT	(1<<2)
+
 HAL_StatusTypeDef BQ25792_Read(uint8_t reg, uint8_t *pData, uint8_t len);
 HAL_StatusTypeDef BQ25792_Write(uint8_t reg, uint8_t *pData, uint8_t len);
+void BQ25792_Debug(void);
+HAL_StatusTypeDef BQ25792_Init(void);
 
 #endif /* INC_BQ25792_H_ */

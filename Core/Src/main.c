@@ -24,6 +24,7 @@
 /* USER CODE BEGIN Includes */
 #include "stdlib.h"
 #include "BQ25792.h"
+#include "ncurses.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -127,32 +128,30 @@ int main(void)
   MX_USB_HOST_Init();
   /* USER CODE BEGIN 2 */
 
-  HAL_UART_Transmit(&huart2, "\f", 1, 10);
-  len = sprintf(bufforTx,"Compiled @ %s %s\r\n", __DATE__, __TIME__);
-  HAL_UART_Transmit(&huart2, bufforTx, len, 10);
+  //when compiled
+	HAL_UART_Transmit(&huart2, "\f", 1, 10);
+	len = sprintf(bufforTx,"%sCompiled @ %s %s\r\n", NCURSES_RESET, __DATE__, __TIME__);
+	HAL_UART_Transmit(&huart2, bufforTx, len, 10);
+
+  if(BQ25792_Init() != HAL_OK)
+  {
+  	  HAL_UART_Transmit(&huart2, "BQ25792_Init: Hal error\r\n", 17, 10);
+  	  while(1);
+  }
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  char pData[16];
-  pData[0] = 0x00;
   while (1)
   {
     /* USER CODE END WHILE */
     MX_USB_HOST_Process();
 
     /* USER CODE BEGIN 3 */
-    if(BQ25792_Read(BQ25792_VBAT_ADC, pData, 2) == HAL_OK)
-    {
-        len = sprintf(bufforTx,"\r%0.2x%0.2x", pData[0], pData[0]);
-        HAL_UART_Transmit(&huart2, bufforTx, len, 10);
-    }
-    else
-    {
-        HAL_UART_Transmit(&huart2, "\rHal error", 10, 10);
-    }
 
-    HAL_Delay(100);
+    BQ25792_Debug();
+
+    HAL_Delay(500);
     HAL_GPIO_TogglePin(LD_G_GPIO_Port, LD_G_Pin);
 
   }
