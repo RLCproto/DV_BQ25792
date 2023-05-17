@@ -9,6 +9,9 @@
 #define NCURSES_H_
 
 #define NCURSES_RESET		"\033[m"
+#define NCURSES_CLRR		"\033[0K"
+#define NCURSES_CLRL		"\033[1K"
+#define NCURSES_CLRLINE		"\033[2K"
 
 #define NCURSES_BOLD		"\033[1m"
 #define NCURSES_UNDERLINE	"\033[4m"
