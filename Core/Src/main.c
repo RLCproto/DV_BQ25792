@@ -135,7 +135,7 @@ int main(void)
 
   if(BQ25792_Init() != HAL_OK)
   {
-  	  HAL_UART_Transmit(&huart2, "BQ25792_Init: Hal error\r\n", 17, 10);
+  	  HAL_UART_Transmit(&huart2, "BQ25792_Init: Hal error\r\n", 25, 10);
   	  while(1);
   }
   /* USER CODE END 2 */
@@ -153,6 +153,8 @@ int main(void)
 
     HAL_Delay(500);
     HAL_GPIO_TogglePin(LD_G_GPIO_Port, LD_G_Pin);
+
+    BQ25792_WD_Feed();
 
   }
   /* USER CODE END 3 */

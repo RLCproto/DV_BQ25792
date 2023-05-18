@@ -226,5 +226,6 @@ HAL_StatusTypeDef BQ25792_Read(uint8_t reg, uint8_t *pData, uint8_t len);
 HAL_StatusTypeDef BQ25792_Write(uint8_t reg, uint8_t *pData, uint8_t len);
 void BQ25792_Debug(void);
 HAL_StatusTypeDef BQ25792_Init(void);
+void BQ25792_WD_Feed(void);
 
 #endif /* INC_BQ25792_H_ */

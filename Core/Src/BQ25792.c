@@ -5,16 +5,38 @@ extern I2C_HandleTypeDef hi2c1;
 
 HAL_StatusTypeDef BQ25792_Init(void)
 {
-	uint8_t Data;
+	uint8_t pData[2];
+	HAL_StatusTypeDef retval = HAL_OK;
 
+	pData[0] =	BQ25792_CHARGER_CONTROL_1_WD_RST;
+	retval = BQ25792_Write(BQ25792_CHARGER_CONTROL_1, pData, 1);
+	if(retval != HAL_OK) return retval;
 
+	pData[0] =	BQ25792_CHARGER_CONTROL_1_WATCHDOG_DISABLE;
+	retval = BQ25792_Write(BQ25792_CHARGER_CONTROL_1, pData, 1);
+	if(retval != HAL_OK) return retval;
 
+	pData[0] = 	BQ25792_CHARGER_CONTROL_0_EN_AUTO_IBATDIS;
+	retval = BQ25792_Write(BQ25792_CHARGER_CONTROL_0, pData, 1);
+	if(retval != HAL_OK) return retval;
 
-	Data =	BQ25792_ADC_CONTROL_EN |
-			BQ25792_ADC_CONTROL_RATE_CONTINUOUS |
-			BQ25792_ADC_CONTROL_SAMPLE_15B;
+	pData[0] = 	BQ25792_CHARGER_CONTROL_5_SFET_PRESENT |
+				BQ25792_CHARGER_CONTROL_5_EN_IBAT;
+	retval = BQ25792_Write(BQ25792_CHARGER_CONTROL_5, pData, 1);
+	if(retval != HAL_OK) return retval;
 
-	return BQ25792_Write(BQ25792_ADC_CONTROL, &Data, 1);
+	pData[0] =	BQ25792_ADC_CONTROL_EN |
+				BQ25792_ADC_CONTROL_RATE_CONTINUOUS |
+				BQ25792_ADC_CONTROL_SAMPLE_15B;
+	retval = BQ25792_Write(BQ25792_ADC_CONTROL, pData, 1);
+	if(retval != HAL_OK) return retval;
+
+	pData[0] = 0;
+	pData[1] = 10;
+	BQ25792_Write(BQ25792_CHARGE_CURRENT_LIMIT, pData, 2);
+	if(retval != HAL_OK) return retval;
+
+	return retval;
 }
 
 HAL_StatusTypeDef BQ25792_Read(uint8_t reg, uint8_t *pData, uint8_t len)
@@ -39,6 +61,12 @@ HAL_StatusTypeDef BQ25792_Write(uint8_t reg, uint8_t *pData, uint8_t len)
 	return HAL_I2C_Master_Transmit(&hi2c1, BQ25792_ADRESS, Data, len, 2);
 }
 
+void BQ25792_WD_Feed(void)
+{
+	uint8_t pData[2];
+	pData[0] =	BQ25792_CHARGER_CONTROL_1_WD_RST;
+	BQ25792_Write(BQ25792_CHARGER_CONTROL_1, pData, 1);
+}
 
 #include "ncurses.h"
 void BQ25792_Debug(void)
@@ -123,10 +151,19 @@ void BQ25792_Debug(void)
 	else
 	  HAL_UART_Transmit(&huart2, "ADC fun: Hal error\r\n", 20, 10);
 
-	//Upper voltage limit
+	//charge voltage limit
 	if(BQ25792_Read(BQ25792_CHARGE_VOLTAGE_LIMIT, pData, 2) == HAL_OK)
 	{
-	  len = sprintf(bufforTx,"Charge limit: 0x%0.2x%0.2x\r\n", pData[0], pData[1]);
+	  len = sprintf(bufforTx,"Charge voltage limit: 0x%0.2x%0.2x\t%dmV\r\n", pData[0], pData[1], (pData[0]<<8 | pData[1])*10);
+	  HAL_UART_Transmit(&huart2, bufforTx, len, 10);
+	}
+	else
+	  HAL_UART_Transmit(&huart2, "Charge limit: Hal error\r\n", 25, 10);
+
+	//charge current limit
+	if(BQ25792_Read(BQ25792_CHARGE_CURRENT_LIMIT, pData, 2) == HAL_OK)
+	{
+	  len = sprintf(bufforTx,"Charge current limit: 0x%0.2x%0.2x\t%dmA\r\n", pData[0], pData[1], (pData[0]<<8 | pData[1])*10);
 	  HAL_UART_Transmit(&huart2, bufforTx, len, 10);
 	}
 	else
@@ -154,6 +191,236 @@ void BQ25792_Debug(void)
 	}
 	else
 		HAL_UART_Transmit(&huart2,"Chager control 0: Hal error\r\n", 28, 10);
+
+	if(BQ25792_Read(BQ25792_CHARGER_CONTROL_1, pData, 1) == HAL_OK)
+	{
+	  len = sprintf(bufforTx,"Chager control 1: 0x%0.2x\r\n", pData[0]);
+	  HAL_UART_Transmit(&huart2, bufforTx, len, 10);
+
+	  switch (pData[0]&BQ25792_CHARGER_CONTROL_1_VAC_OVP_MASK)
+	  {
+		  case BQ25792_CHARGER_CONTROL_1_VAC_OVP_7V:
+		  {
+			  len = sprintf(bufforTx,"\tVAC_OVP_7V\r\n");
+			  break;
+		  }
+		  case BQ25792_CHARGER_CONTROL_1_VAC_OVP_12V:
+		  {
+			  len = sprintf(bufforTx,"\tVAC_OVP_12V\r\n");
+			  break;
+		  }
+		  case BQ25792_CHARGER_CONTROL_1_VAC_OVP_18V:
+		  {
+			  len = sprintf(bufforTx,"\tVAC_OVP_18V\r\n");
+			  break;
+		  }
+		  case BQ25792_CHARGER_CONTROL_1_VAC_OVP_26V:
+		  {
+			  len = sprintf(bufforTx,"\tVAC_OVP_26V\r\n");
+			  break;
+		  }
+		  default:
+			  len = sprintf(bufforTx,"\t%s%sCHARGER_CONTROL_1 flag mask_VAC_OVP error%s%s\r\n", NCURSES_CLRL, NCURSES_BG_RED, NCURSES_BG_DEFAULT, NCURSES_CLRR);
+	  }
+	  HAL_UART_Transmit(&huart2, bufforTx, len, 10);
+
+	  len = sprintf(bufforTx,"\tWD_RST: %x\r\n", (pData[0]&BQ25792_CHARGER_CONTROL_1_WD_RST)?1:0);
+	  HAL_UART_Transmit(&huart2, bufforTx, len, 10);
+
+	  switch (pData[0]&BQ25792_CHARGER_CONTROL_1_WATCHDOG_MASK)
+	  {
+		  case BQ25792_CHARGER_CONTROL_1_WATCHDOG_DISABLE:
+		  {
+			  len = sprintf(bufforTx,"\tWATCHDOG_DISABLE\r\n");
+			  break;
+		  }
+		  case BQ25792_CHARGER_CONTROL_1_WATCHDOG_500MS:
+		  {
+			  len = sprintf(bufforTx,"\tWATCHDOG_500ms\r\n");
+			  break;
+		  }
+		  case BQ25792_CHARGER_CONTROL_1_WATCHDOG_1S:
+		  {
+			  len = sprintf(bufforTx,"\tWATCHDOG_1s\r\n");
+			  break;
+		  }
+		  case BQ25792_CHARGER_CONTROL_1_WATCHDOG_2S:
+		  {
+			  len = sprintf(bufforTx,"\tWATCHDOG_2s\r\n");
+			  break;
+		  }
+		  case BQ25792_CHARGER_CONTROL_1_WATCHDOG_20S:
+		  {
+			  len = sprintf(bufforTx,"\tWATCHDOG_20s\r\n");
+			  break;
+		  }
+		  case BQ25792_CHARGER_CONTROL_1_WATCHDOG_40S:
+		  {
+			  len = sprintf(bufforTx,"\tWATCHDOG_40s\r\n");
+			  break;
+		  }
+		  case BQ25792_CHARGER_CONTROL_1_WATCHDOG_80S:
+		  {
+			  len = sprintf(bufforTx,"\tWATCHDOG_80s\r\n");
+			  break;
+		  }
+		  case BQ25792_CHARGER_CONTROL_1_WATCHDOG_160S:
+		  {
+			  len = sprintf(bufforTx,"\tWATCHDOG_160s\r\n");
+			  break;
+		  }
+		  default:
+			  len = sprintf(bufforTx,"%s\t%sCHARGER_CONTROL_1 flag mask_WATCHDOG error%s\r\n", NCURSES_CLRR, NCURSES_BG_RED, NCURSES_BG_DEFAULT);
+	  }
+	  HAL_UART_Transmit(&huart2, bufforTx, len, 10);
+
+	}
+	else
+		HAL_UART_Transmit(&huart2,"Chager control 1: Hal error\r\n", 28, 10);
+
+	if(BQ25792_Read(BQ25792_CHARGER_CONTROL_2, pData, 1) == HAL_OK)
+	{
+	  len = sprintf(bufforTx,"Chager control 2: 0x%0.2x\r\n", pData[0]);
+	  HAL_UART_Transmit(&huart2, bufforTx, len, 10);
+
+	  len = sprintf(bufforTx,"\tFORCE_INDET: %x\r\n", (pData[0]&BQ25792_CHARGER_CONTROL_2_FORCE_INDET)?1:0);
+	  HAL_UART_Transmit(&huart2, bufforTx, len, 10);
+	  len = sprintf(bufforTx,"\tAUTO_INDET_EN: %x\r\n", (pData[0]&BQ25792_CHARGER_CONTROL_2_AUTO_INDET_EN)?1:0);
+	  HAL_UART_Transmit(&huart2, bufforTx, len, 10);
+	  len = sprintf(bufforTx,"\tEN_12V: %x\r\n", (pData[0]&BQ25792_CHARGER_CONTROL_2_EN_12V)?1:0);
+	  HAL_UART_Transmit(&huart2, bufforTx, len, 10);
+	  len = sprintf(bufforTx,"\tEN_9V: %x\r\n", (pData[0]&BQ25792_CHARGER_CONTROL_2_EN_9V)?1:0);
+	  HAL_UART_Transmit(&huart2, bufforTx, len, 10);
+	  len = sprintf(bufforTx,"\tHVDCP_EN: %x\r\n", (pData[0]&BQ25792_CHARGER_CONTROL_2_HVDCP_EN)?1:0);
+	  HAL_UART_Transmit(&huart2, bufforTx, len, 10);
+	  switch(pData[0]&BQ25792_CHARGER_CONTROL_2_SDRV_CTRL_MASK)
+	  {
+		  case BQ25792_CHARGER_CONTROL_2_SDRV_CTRL_IDLE:
+		  {
+			  len = sprintf(bufforTx,"%s\tSDRV_CTRL_IDLE\r\n", NCURSES_CLRR);
+			  break;
+		  }
+		  case BQ25792_CHARGER_CONTROL_2_SDRV_CTRL_SHUTDOWN:
+		  {
+			  len = sprintf(bufforTx,"%sSDRV_CTRL_SHUTDOWN\t\r\n", NCURSES_CLRR);
+			  break;
+		  }
+		  case BQ25792_CHARGER_CONTROL_2_SDRV_CTRL_SHIP:
+		  {
+			  len = sprintf(bufforTx,"%s\tSDRV_CTRL_SHIP\r\n", NCURSES_CLRR);
+			  break;
+		  }
+		  case BQ25792_CHARGER_CONTROL_2_SDRV_CTRL_POWERDOWN:
+		  {
+			  len = sprintf(bufforTx,"%s\tSDRV_CTRL_POWERDOWN\r\n", NCURSES_CLRR);
+			  break;
+		  }
+		  default:
+		  {
+			  len = sprintf(bufforTx,"%s\t%sCHARGER_CONTROL_2 flag mask_SDRV_CTRL error%s\r\n", NCURSES_CLRR, NCURSES_BG_RED, NCURSES_BG_DEFAULT);
+		  }
+	  }
+	  HAL_UART_Transmit(&huart2, bufforTx, len, 10);
+	  len = sprintf(bufforTx,"\tSDRV_DLY: %x\r\n", (pData[0]&BQ25792_CHARGER_CONTROL_2_SDRV_DLY)?1:0);
+	  HAL_UART_Transmit(&huart2, bufforTx, len, 10);
+	}
+	else
+		HAL_UART_Transmit(&huart2,"Chager control 2: Hal error\r\n", 28, 10);
+
+	if(BQ25792_Read(BQ25792_CHARGER_CONTROL_3, pData, 1) == HAL_OK)
+	{
+	  len = sprintf(bufforTx,"Chager control 3: 0x%0.2x\r\n", pData[0]);
+	  HAL_UART_Transmit(&huart2, bufforTx, len, 10);
+
+	  len = sprintf(bufforTx,"%s\tDIS_ACDRV: %x\r\n", NCURSES_CLRR, (pData[0]&BQ25792_CHARGER_CONTROL_3_DIS_ACDRV)?1:0);
+	  HAL_UART_Transmit(&huart2, bufforTx, len, 10);
+	  len = sprintf(bufforTx,"%s\tEN_OTG: %x\r\n", NCURSES_CLRR, (pData[0]&BQ25792_CHARGER_CONTROL_3_EN_OTG)?1:0);
+	  HAL_UART_Transmit(&huart2, bufforTx, len, 10);
+	  len = sprintf(bufforTx,"%s\tPFM_OTG_DIS: %x\r\n", NCURSES_CLRR, (pData[0]&BQ25792_CHARGER_CONTROL_3_PFM_OTG_DIS)?1:0);
+	  HAL_UART_Transmit(&huart2, bufforTx, len, 10);
+	  len = sprintf(bufforTx,"%s\tPFM_FWD_DIS: %x\r\n", NCURSES_CLRR, (pData[0]&BQ25792_CHARGER_CONTROL_3_PFM_FWD_DIS)?1:0);
+	  HAL_UART_Transmit(&huart2, bufforTx, len, 10);
+	  len = sprintf(bufforTx,"%s\tWKUP_DLY: %x\r\n", NCURSES_CLRR, (pData[0]&BQ25792_CHARGER_CONTROL_3_WKUP_DLY)?1:0);
+	  HAL_UART_Transmit(&huart2, bufforTx, len, 10);
+	  len = sprintf(bufforTx,"%s\tDIS_LDO: %x\r\n", NCURSES_CLRR, (pData[0]&BQ25792_CHARGER_CONTROL_3_DIS_LDO)?1:0);
+	  HAL_UART_Transmit(&huart2, bufforTx, len, 10);
+	  len = sprintf(bufforTx,"%s\tDIS_OTG_OOA: %x\r\n", NCURSES_CLRR, (pData[0]&BQ25792_CHARGER_CONTROL_3_DIS_OTG_OOA)?1:0);
+	  HAL_UART_Transmit(&huart2, bufforTx, len, 10);
+	  len = sprintf(bufforTx,"%s\tDIS_FWD_OOA: %x\r\n", NCURSES_CLRR, (pData[0]&BQ25792_CHARGER_CONTROL_3_DIS_FWD_OOA)?1:0);
+	  HAL_UART_Transmit(&huart2, bufforTx, len, 10);
+	}
+	else
+		HAL_UART_Transmit(&huart2,"Chager control 3: Hal error\r\n", 28, 10);
+
+	if(BQ25792_Read(BQ25792_CHARGER_CONTROL_4, pData, 1) == HAL_OK)
+	{
+	  len = sprintf(bufforTx,"Chager control 4: 0x%0.2x\r\n", pData[0]);
+	  HAL_UART_Transmit(&huart2, bufforTx, len, 10);
+
+	  len = sprintf(bufforTx,"%s\tEN_ACDRV2: %x\r\n", NCURSES_CLRR, (pData[0]&BQ25792_CHARGER_CONTROL_4_EN_ACDRV2)?1:0);
+	  HAL_UART_Transmit(&huart2, bufforTx, len, 10);
+	  len = sprintf(bufforTx,"%s\tEN_ACDRV1: %x\r\n", NCURSES_CLRR, (pData[0]&BQ25792_CHARGER_CONTROL_4_EN_ACDRV1)?1:0);
+	  HAL_UART_Transmit(&huart2, bufforTx, len, 10);
+	  len = sprintf(bufforTx,"%s\tPWM_FREQ: %s\r\n", NCURSES_CLRR, (pData[0]&BQ25792_CHARGER_CONTROL_4_PWM_FREQ)?"750kHz":"1.5MHz");
+	  HAL_UART_Transmit(&huart2, bufforTx, len, 10);
+	  len = sprintf(bufforTx,"%s\tDIS_STAT: %x\r\n", NCURSES_CLRR, (pData[0]&BQ25792_CHARGER_CONTROL_4_DIS_STAT)?1:0);
+	  HAL_UART_Transmit(&huart2, bufforTx, len, 10);
+	  len = sprintf(bufforTx,"%s\tDIS_VSYS_SHORT: %x\r\n", NCURSES_CLRR, (pData[0]&BQ25792_CHARGER_CONTROL_4_DIS_VSYS_SHORT)?1:0);
+	  HAL_UART_Transmit(&huart2, bufforTx, len, 10);
+	  len = sprintf(bufforTx,"%s\tDIS_VOTG_UVP: %x\r\n", NCURSES_CLRR, (pData[0]&BQ25792_CHARGER_CONTROL_4_DIS_VOTG_UVP)?1:0);
+	  HAL_UART_Transmit(&huart2, bufforTx, len, 10);
+	  len = sprintf(bufforTx,"%s\tFORCE_VINDPM_DET: %x\r\n", NCURSES_CLRR, (pData[0]&BQ25792_CHARGER_CONTROL_4_FORCE_VINDPM_DET)?1:0);
+	  HAL_UART_Transmit(&huart2, bufforTx, len, 10);
+	  len = sprintf(bufforTx,"%s\tEN_IBUS_OCP: %x\r\n", NCURSES_CLRR, (pData[0]&BQ25792_CHARGER_CONTROL_4_EN_IBUS_OCP)?1:0);
+	  HAL_UART_Transmit(&huart2, bufforTx, len, 10);
+	}
+	else
+		HAL_UART_Transmit(&huart2,"Chager control 4: Hal error\r\n", 28, 10);
+
+	if(BQ25792_Read(BQ25792_CHARGER_CONTROL_5, pData, 1) == HAL_OK)
+	{
+	  len = sprintf(bufforTx,"Chager control 5: 0x%0.2x\r\n", pData[0]);
+	  HAL_UART_Transmit(&huart2, bufforTx, len, 10);
+
+	  len = sprintf(bufforTx,"%s\tSFET_PRESENT: %s\r\n", NCURSES_CLRR, (pData[0]&BQ25792_CHARGER_CONTROL_5_SFET_PRESENT)?"Ship FET populated":"No ship FET populated");
+	  HAL_UART_Transmit(&huart2, bufforTx, len, 10);
+	  len = sprintf(bufforTx,"%s\tEN_IBAT: %x\r\n", NCURSES_CLRR, (pData[0]&BQ25792_CHARGER_CONTROL_5_EN_IBAT)?1:0);
+	  HAL_UART_Transmit(&huart2, bufforTx, len, 10);
+	  switch(pData[0]&BQ25792_CHARGER_CONTROL_5_IBAT_REG_MASK)
+	  {
+		  case BQ25792_CHARGER_CONTROL_5_IBAT_REG_3A:
+		  {
+			  len = sprintf(bufforTx,"%s\tIBAT_REG_3A\r\n", NCURSES_CLRR);
+			  break;
+		  }
+		  case BQ25792_CHARGER_CONTROL_5_IBAT_REG_4A:
+		  {
+			  len = sprintf(bufforTx,"%s\tIBAT_REG_4A\r\n", NCURSES_CLRR);
+			  break;
+		  }
+		  case BQ25792_CHARGER_CONTROL_5_IBAT_REG_5A:
+		  {
+			  len = sprintf(bufforTx,"%s\tIBAT_REG_5A\r\n", NCURSES_CLRR);
+			  break;
+		  }
+		  case BQ25792_CHARGER_CONTROL_5_IBAT_REG_DISABLE:
+		  {
+			  len = sprintf(bufforTx,"%s\tIBAT_REG_DISABLE\r\n", NCURSES_CLRR);
+			  break;
+		  }
+		  default:
+			  len = sprintf(bufforTx,"%s\t%sCHARGER_CONTROL_5 flag IBAT_REG_MASK error%s\r\n", NCURSES_CLRR, NCURSES_BG_RED, NCURSES_BG_DEFAULT);
+	  }
+	  HAL_UART_Transmit(&huart2, bufforTx, len, 10);
+	  len = sprintf(bufforTx,"%s\tEN_IINDPM: %x\r\n", NCURSES_CLRR, (pData[0]&BQ25792_CHARGER_CONTROL_5_EN_IINDPM)?1:0);
+	  HAL_UART_Transmit(&huart2, bufforTx, len, 10);
+	  len = sprintf(bufforTx,"%s\tEN_EXTILIM: %x\r\n", NCURSES_CLRR, (pData[0]&BQ25792_CHARGER_CONTROL_5_EN_EXTILIM)?1:0);
+	  HAL_UART_Transmit(&huart2, bufforTx, len, 10);
+	  len = sprintf(bufforTx,"%s\tEN_BATOC: %x\r\n", NCURSES_CLRR, (pData[0]&BQ25792_CHARGER_CONTROL_5_EN_BATOC)?1:0);
+	  HAL_UART_Transmit(&huart2, bufforTx, len, 10);
+	}
+	else
+		HAL_UART_Transmit(&huart2,"Chager control 5: Hal error\r\n", 28, 10);
 
 	//Charger statuses
 	if(BQ25792_Read(BQ25792_CHARGER_STATUS_0, pData, 1) == HAL_OK)
