@@ -58,14 +58,15 @@ HAL_StatusTypeDef BQ25792_Write(uint8_t reg, uint8_t *pData, uint8_t len)
 	Data[0] = reg;
 	Data[1] = pData[0];
 	if(len >= 2) Data[2] = pData[1];
-	return HAL_I2C_Master_Transmit(&hi2c1, BQ25792_ADRESS, Data, len, 2);
+	return HAL_I2C_Master_Transmit(&hi2c1, BQ25792_ADRESS, Data, len+1, 2);
 }
 
-void BQ25792_WD_Feed(void)
+HAL_StatusTypeDef BQ25792_WD_Feed(void)
 {
+	HAL_StatusTypeDef retval = HAL_OK;
 	uint8_t pData[2];
 	pData[0] =	BQ25792_CHARGER_CONTROL_1_WD_RST;
-	BQ25792_Write(BQ25792_CHARGER_CONTROL_1, pData, 1);
+	return BQ25792_Write(BQ25792_CHARGER_CONTROL_1, pData, 1);
 }
 
 #include "ncurses.h"
@@ -83,7 +84,7 @@ void BQ25792_Debug(void)
 	//VBAT
 	if(BQ25792_Read(BQ25792_VBAT_ADC, pData, 2) == HAL_OK)
 	{
-	  len = sprintf(bufforTx,"VBAT: 0x%0.2x%0.2x\t%dmV\r\n", pData[0], pData[1], pData[0] << 8 | pData[1]);
+	  len = sprintf(bufforTx,"VBAT: 0x%0.2x%0.2x\t%dmV%s\r\n", pData[0], pData[1], pData[0] << 8 | pData[1], NCURSES_CLRR);
 	  HAL_UART_Transmit(&huart2, bufforTx, len, 10);
 	}
 	else
@@ -92,7 +93,7 @@ void BQ25792_Debug(void)
 	//IBAT
 	if(BQ25792_Read(BQ25792_IBAT_ADC, pData, 2) == HAL_OK)
 	{
-	  len = sprintf(bufforTx,"IBAT: 0x%0.2x%0.2x\t%dmA\r\n", pData[0], pData[1], pData[0] << 8 | pData[1]);
+	  len = sprintf(bufforTx,"IBAT: 0x%0.2x%0.2x\t%dmA%s\r\n", pData[0], pData[1], pData[0] << 8 | pData[1], NCURSES_CLRR);
 	  HAL_UART_Transmit(&huart2, bufforTx, len, 10);
 	}
 	else
@@ -101,7 +102,7 @@ void BQ25792_Debug(void)
 	//VBUS
 	if(BQ25792_Read(BQ25792_VBUS_ADC, pData, 2) == HAL_OK)
 	{
-	  len = sprintf(bufforTx,"VBUS: 0x%0.2x%0.2x\t%dmV\r\n", pData[0], pData[1], pData[0] << 8 | pData[1]);
+	  len = sprintf(bufforTx,"VBUS: 0x%0.2x%0.2x\t%dmV%s\r\n", pData[0], pData[1], pData[0] << 8 | pData[1], NCURSES_CLRR);
 	  HAL_UART_Transmit(&huart2, bufforTx, len, 10);
 	}
 	else
@@ -110,7 +111,7 @@ void BQ25792_Debug(void)
 	//IBUS
 	if(BQ25792_Read(BQ25792_IBUS_ADC, pData, 2) == HAL_OK)
 	{
-	  len = sprintf(bufforTx,"IBUS: 0x%0.2x%0.2x\t%dmA\r\n", pData[0], pData[1], pData[0] << 8 | pData[1]);
+	  len = sprintf(bufforTx,"IBUS: 0x%0.2x%0.2x\t%dmA%s\r\n", pData[0], pData[1], pData[0] << 8 | pData[1], NCURSES_CLRR);
 	  HAL_UART_Transmit(&huart2, bufforTx, len, 10);
 	}
 	else
@@ -119,7 +120,7 @@ void BQ25792_Debug(void)
 	//VSYS
 	if(BQ25792_Read(BQ25792_VSYS_ADC, pData, 2) == HAL_OK)
 	{
-	  len = sprintf(bufforTx,"VSYS: 0x%0.2x%0.2x\t%dmV\r\n", pData[0], pData[1], pData[0] << 8 | pData[1]);
+	  len = sprintf(bufforTx,"VSYS: 0x%0.2x%0.2x\t%dmV%s\r\n", pData[0], pData[1], pData[0] << 8 | pData[1], NCURSES_CLRR);
 	  HAL_UART_Transmit(&huart2, bufforTx, len, 10);
 	}
 	else
@@ -431,7 +432,10 @@ void BQ25792_Debug(void)
 	  HAL_UART_Transmit(&huart2, bufforTx, len, 10);
 	  len = sprintf(bufforTx,"\tVINDPM_STAT: %x\r\n", (pData[0]&BQ25792_CHARGER_STATUS_0_VINDPM_STAT)?1:0);
 	  HAL_UART_Transmit(&huart2, bufforTx, len, 10);
-	  len = sprintf(bufforTx,"\tWD_STAT: %x\r\n", (pData[0]&BQ25792_CHARGER_STATUS_0_WD_STAT)?1:0);
+	  if((pData[0]&BQ25792_CHARGER_STATUS_0_WD_STAT))
+		  len = sprintf(bufforTx,"\t%sWD_STAT: 1%s\r\n", NCURSES_BG_RED, NCURSES_BG_DEFAULT);
+	  else
+		  len = sprintf(bufforTx,"\tWD_STAT: 0\r\n");
 	  HAL_UART_Transmit(&huart2, bufforTx, len, 10);
 	  len = sprintf(bufforTx,"\tPOORSRC_STAT: %x\r\n", (pData[0]&BQ25792_CHARGER_STATUS_0_POORSRC_STAT)?1:0);
 	  HAL_UART_Transmit(&huart2, bufforTx, len, 10);
@@ -441,7 +445,7 @@ void BQ25792_Debug(void)
 	  HAL_UART_Transmit(&huart2, bufforTx, len, 10);
 	  len = sprintf(bufforTx,"\tAC1_PRESENT_STAT: %x\r\n", (pData[0]&BQ25792_CHARGER_STATUS_0_AC1_PRESENT_STAT)?1:0);
 	  HAL_UART_Transmit(&huart2, bufforTx, len, 10);
-	  len = sprintf(bufforTx,"\tVBUS_PREWSENT_STAT: %x\r\n", (pData[0]&BQ25792_CHARGER_STATUS_0_VBUS_PRESENT_STAT)?1:0);
+	  len = sprintf(bufforTx,"\tVBUS_PRESENT_STAT: %x\r\n", (pData[0]&BQ25792_CHARGER_STATUS_0_VBUS_PRESENT_STAT)?1:0);
 	  HAL_UART_Transmit(&huart2, bufforTx, len, 10);
 	}
 	else

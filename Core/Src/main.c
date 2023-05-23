@@ -154,8 +154,14 @@ int main(void)
     HAL_Delay(500);
     HAL_GPIO_TogglePin(LD_G_GPIO_Port, LD_G_Pin);
 
-    BQ25792_WD_Feed();
-
+    if(BQ25792_WD_Feed() != HAL_OK)
+    {
+    	while(1)
+        {
+    		HAL_Delay(100);
+            HAL_GPIO_TogglePin(LD_R_GPIO_Port, LD_R_Pin);
+        }
+    }
   }
   /* USER CODE END 3 */
 }
