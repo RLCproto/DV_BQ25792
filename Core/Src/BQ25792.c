@@ -8,11 +8,7 @@ HAL_StatusTypeDef BQ25792_Init(void)
 	uint8_t pData[2];
 	HAL_StatusTypeDef retval = HAL_OK;
 
-	pData[0] =	BQ25792_CHARGER_CONTROL_1_WD_RST;
-	retval = BQ25792_Write(BQ25792_CHARGER_CONTROL_1, pData, 1);
-	if(retval != HAL_OK) return retval;
-
-	pData[0] =	BQ25792_CHARGER_CONTROL_1_WATCHDOG_DISABLE;
+	pData[0] =	BQ25792_CHARGER_CONTROL_1_WD_RST | BQ25792_CHARGER_CONTROL_1_WATCHDOG_20S;
 	retval = BQ25792_Write(BQ25792_CHARGER_CONTROL_1, pData, 1);
 	if(retval != HAL_OK) return retval;
 
@@ -65,7 +61,9 @@ HAL_StatusTypeDef BQ25792_WD_Feed(void)
 {
 	HAL_StatusTypeDef retval = HAL_OK;
 	uint8_t pData[2];
-	pData[0] =	BQ25792_CHARGER_CONTROL_1_WD_RST;
+	retval = BQ25792_Read(BQ25792_CHARGER_CONTROL_1, pData, 1);
+	if(retval != HAL_OK) return retval;
+	pData[0] |=	BQ25792_CHARGER_CONTROL_1_WD_RST;
 	return BQ25792_Write(BQ25792_CHARGER_CONTROL_1, pData, 1);
 }
 
