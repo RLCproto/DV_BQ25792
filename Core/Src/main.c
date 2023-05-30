@@ -154,6 +154,47 @@ int main(void)
     HAL_Delay(500);
     HAL_GPIO_TogglePin(LD_G_GPIO_Port, LD_G_Pin);
 
+    if(HAL_GPIO_ReadPin(JOY_CENTER_GPIO_Port, JOY_CENTER_Pin))
+    {
+		char pData[1];
+		if(BQ25792_Read(BQ25792_CHARGER_CONTROL_0, pData, 1) == HAL_OK)
+		{
+			pData[0] ^= BQ25792_CHARGER_CONTROL_0_EN_CHG;
+			BQ25792_Write(BQ25792_CHARGER_CONTROL_0, pData, 1);
+		}
+    }
+
+    if(HAL_GPIO_ReadPin(JOY_UP_GPIO_Port, JOY_UP_Pin))
+	{
+		char pData[2];
+		if(BQ25792_Read(BQ25792_CHARGE_CURRENT_LIMIT, pData, 2) == HAL_OK)
+		{
+			int current = pData[0] << 8 | pData[1];
+			if(current < 500)
+				current++;
+			if(current > 500)
+				current = 500;
+			pData[0] = (current << 8) & 0xff;
+			pData[1] = current & 0xff;
+			BQ25792_Write(BQ25792_CHARGE_CURRENT_LIMIT, pData, 2);
+		}
+	}
+    else if(HAL_GPIO_ReadPin(JOY_DOWN_GPIO_Port, JOY_DOWN_Pin))
+	{
+		char pData[2];
+		if(BQ25792_Read(BQ25792_CHARGE_CURRENT_LIMIT, pData, 2) == HAL_OK)
+		{
+			int current = pData[0] << 8 | pData[1];
+			if(current > 5)
+				current--;
+			if(current < 5)
+				current = 5;
+			pData[0] = (current << 8) & 0xff;
+			pData[1] = current & 0xff;
+			BQ25792_Write(BQ25792_CHARGE_CURRENT_LIMIT, pData, 2);
+		}
+	}
+
     if(BQ25792_WD_Feed() != HAL_OK)
     {
     	while(1)
