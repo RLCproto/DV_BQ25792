@@ -125,7 +125,7 @@ void BQ25792_Debug(void)
 	//IBAT
 	if(BQ25792_Read(BQ25792_IBAT_ADC, pData, 2) == HAL_OK)
 	{
-	  len = sprintf(bufforTx,"IBAT: 0x%0.2x%0.2x\t%dmA%s\r\n", pData[0], pData[1], pData[0] << 8 | pData[1], NCURSES_CLRR);
+	  len = sprintf(bufforTx,"IBAT: 0x%0.2x%0.2x\t%dmA%s\r\n", pData[0], pData[1], (int16_t)(pData[0] << 8 | pData[1]), NCURSES_CLRR);
 	  HAL_UART_Transmit(&huart2, bufforTx, len, 10);
 	}
 	else
@@ -143,7 +143,7 @@ void BQ25792_Debug(void)
 	//IBUS
 	if(BQ25792_Read(BQ25792_IBUS_ADC, pData, 2) == HAL_OK)
 	{
-	  len = sprintf(bufforTx,"IBUS: 0x%0.2x%0.2x\t%dmA%s\r\n", pData[0], pData[1], pData[0] << 8 | pData[1], NCURSES_CLRR);
+	  len = sprintf(bufforTx,"IBUS: 0x%0.2x%0.2x\t%dmA%s\r\n", pData[0], pData[1], (int16_t)(pData[0] << 8 | pData[1]), NCURSES_CLRR);
 	  HAL_UART_Transmit(&huart2, bufforTx, len, 10);
 	}
 	else
