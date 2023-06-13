@@ -195,6 +195,16 @@ int main(void)
 		}
 	}
 
+    if(HAL_GPIO_ReadPin(JOY_LEFT_GPIO_Port, JOY_LEFT_Pin))
+    {
+		char pData[1];
+		if(BQ25792_Read(BQ25792_CHARGER_CONTROL_3, pData, 1) == HAL_OK)
+		{
+			pData[0] ^= BQ25792_CHARGER_CONTROL_3_EN_OTG;
+			BQ25792_Write(BQ25792_CHARGER_CONTROL_3, pData, 1);
+		}
+    }
+
     if(BQ25792_WD_Feed() != HAL_OK)
     {
     	while(1)
