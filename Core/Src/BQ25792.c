@@ -18,7 +18,8 @@ HAL_StatusTypeDef BQ25792_Init(void)
 	if(retval != HAL_OK) return retval;
 
 	pData[0] = 	BQ25792_CHARGER_CONTROL_2_EN_9V |
-				BQ25792_CHARGER_CONTROL_2_AUTO_INDET_EN;
+				BQ25792_CHARGER_CONTROL_2_AUTO_INDET_EN |
+				BQ25792_CHARGER_CONTROL_2_SDRV_DLY;
 	retval = BQ25792_Write(BQ25792_CHARGER_CONTROL_2, pData, 1);
 	if(retval != HAL_OK) return retval;
 
@@ -28,12 +29,14 @@ HAL_StatusTypeDef BQ25792_Init(void)
 	if(retval != HAL_OK) return retval;
 
 	//nothing to set
-	pData[0] = 	0;
+	pData[0] = 	BQ25792_CHARGER_CONTROL_4_EN_IBUS_OCP;
 	retval = BQ25792_Write(BQ25792_CHARGER_CONTROL_4, pData, 1);
 	if(retval != HAL_OK) return retval;
 
 	pData[0] = 	BQ25792_CHARGER_CONTROL_5_SFET_PRESENT |
-				BQ25792_CHARGER_CONTROL_5_EN_IBAT;
+				BQ25792_CHARGER_CONTROL_5_EN_IBAT |
+				BQ25792_CHARGER_CONTROL_5_EN_IINDPM | //bez tego mamy OBVP;
+				0;
 	retval = BQ25792_Write(BQ25792_CHARGER_CONTROL_5, pData, 1);
 	if(retval != HAL_OK) return retval;
 

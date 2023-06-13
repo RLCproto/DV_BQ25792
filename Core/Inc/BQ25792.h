@@ -222,6 +222,15 @@
 #define BQ25792_CHARGER_FLAGS_3_TS_WARM_FLAG		(1<<1)
 #define BQ25792_CHARGER_FLAGS_3_TS_HOT_FLAG			(1<<0)
 
+#define BQ25792_FAULT_MASK_0_IBAT_MASK				(1<<7)
+#define BQ25792_FAULT_MASK_0_VBUS_OVP_MASK			(1<<6)
+#define BQ25792_FAULT_MASK_0_VBAT_OVP_MASK			(1<<5)
+#define BQ25792_FAULT_MASK_0_IBUS_OCP_MASK			(1<<4)
+#define BQ25792_FAULT_MASK_0_IBAT_OCP_MASK			(1<<3)
+#define BQ25792_FAULT_MASK_0_CONV_OCP_MASK			(1<<2)
+#define BQ25792_FAULT_MASK_0_VAC2_OVP_MASK			(1<<1)
+#define BQ25792_FAULT_MASK_0_VAC1_OVP_MASK			(1<<0)
+
 HAL_StatusTypeDef BQ25792_Read(uint8_t reg, uint8_t *pData, uint8_t len);
 HAL_StatusTypeDef BQ25792_Write(uint8_t reg, uint8_t *pData, uint8_t len);
 void BQ25792_Debug(void);
